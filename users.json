@@ -110,7 +110,6 @@
             }
         ]
     },
-<<<<<<< HEAD
     "v": {
         "password": "6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b",
         "carbon_history": [
@@ -152,7 +151,4 @@
             }
         ]
     }
-=======
-    "bullshit": "30a989afc82c0a21139573591de4e5ff37994f7d1506a9acf2b5997005c2649f"
->>>>>>> 39fe83b58f57ec3ccfbf97aa3fa84b5562ea90e2
 }
