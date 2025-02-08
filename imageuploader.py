@@ -1,38 +1,30 @@
 import google.generativeai as genai
+from dotenv import load_dotenv
 import streamlit as st
 import os
-from PIL import Image
+from PIL import Image, ImageEnhance
 import io
-from dotenv import load_dotenv
+import re
+import base64
 
-# Set page configuration (must be the first Streamlit command)
-st.set_page_config(
-    page_title="Carbon Receipt Analyzer",
-    page_icon="🌱",
-    layout="centered"
-)
-
-# Load environment variables
 load_dotenv()
-api_key = os.getenv("GOOGLE_API_KEY")
-if not api_key:
-    st.error("API Key not found! Ensure .env file is set up.")
-    raise ValueError("Google API Key not found.")
-genai.configure(api_key=api_key)
+genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
 @st.cache_resource
 def initialize_model():
     return genai.GenerativeModel('gemini-1.5-flash')
 
-@st.cache_data(ttl=3600)
-def get_gemini_response(_model, input_prompt, extracted_items):
+def get_gemini_response(_model, input_prompt, _image_object):
     try:
-        # Combine prompt and items for analysis
-        prompt = input_prompt + "\n" + extracted_items
-        response = _model.generate_content([prompt])
+        # Convert PIL Image to base64 before passing to Gemini API
+        img_byte_arr = io.BytesIO()
+        _image_object.save(img_byte_arr, format='PNG')
+        img_base64 = base64.b64encode(img_byte_arr.getvalue()).decode("utf-8")
+
+        response = _model.generate_content([input_prompt, {"mime_type": "image/png", "data": img_base64}])
         return response.text
     except Exception as e:
-        return None
+        return f"Error in analysis: {str(e)}"
 
 def process_receipt_image(upload):
     if upload is not None:
@@ -42,35 +34,42 @@ def process_receipt_image(upload):
             ratio = max_size / max(image.size)
             new_size = tuple(int(dim * ratio) for dim in image.size)
             image = image.resize(new_size, Image.Resampling.LANCZOS)
+
         if image.mode != 'RGB':
             image = image.convert('RGB')
-        img_byte_arr = io.BytesIO()
-        image.save(img_byte_arr, format='JPEG', quality=85, optimize=True)
-        img_byte_arr = img_byte_arr.getvalue()
-        return image, [{"mime_type": "image/jpeg", "data": img_byte_arr}]
-    return None, None
 
-def estimate_carbon_footprint(items):
-    # Sample carbon emissions in kg CO2 per item
-    carbon_emissions = {
-        "shirt": 2.1,
-        "pants": 3.0,
-        "shoes": 4.5,
-        "electronics": 50.0,
-        "food": 1.5,
-        "default": 5.0  # Default value for unrecognized items
-    }
+        # Enhance image contrast for better OCR results
+        enhancer = ImageEnhance.Contrast(image)
+        image = enhancer.enhance(2.0)
 
-    total_emissions = 0
-    for item, quantity in items.items():
-        emission_per_item = carbon_emissions.get(item.lower(), carbon_emissions["default"])
-        total_emissions += emission_per_item * quantity
+        return image
+    return None
 
-    return total_emissions
+def extract_numeric_value(text, pattern):
+    match = re.search(pattern, text)
+    if match:
+        return float(match.group(1))
+    return None
+
+st.set_page_config(
+    page_title="Carbon Receipt Analyzer",
+    page_icon="🌱",
+    layout="centered"
+)
+
+if 'image_data' not in st.session_state:
+    st.session_state.image_data = None
+if 'analysis_complete' not in st.session_state:
+    st.session_state.analysis_complete = False
+if 'carbon_score' not in st.session_state:
+    st.session_state.carbon_score = None
+if 'offset_cost' not in st.session_state:
+    st.session_state.offset_cost = None
+if 'error_message' not in st.session_state:
+    st.session_state.error_message = None
 
 model = initialize_model()
 
-# Streamlit UI
 st.markdown("""
     <h1 style='text-align: center; color: #2E7D32;'>🌱 Carbon Receipt Analyzer</h1>
     <p style='text-align: center;'>Upload your receipt to analyze the carbon footprint of your purchases.</p>
@@ -79,26 +78,55 @@ st.markdown("""
 uploaded_file = st.file_uploader("Upload a receipt image", type=["jpg", "jpeg", "png"], key="file_uploader")
 
 if uploaded_file is not None:
-    display_image, image_data = process_receipt_image(uploaded_file)
+    display_image = process_receipt_image(uploaded_file)
     if display_image:
-        st.image(display_image, caption="📸 Uploaded Receipt", use_container_width=True)
+        st.session_state.image_data = display_image
+        st.image(display_image, caption="Uploaded Receipt", use_container_width=True)
+        st.session_state.analysis_complete = False
+        st.session_state.carbon_score = None
+        st.session_state.offset_cost = None
+        st.session_state.error_message = None  # Reset error message
 
 submit = st.button("Analyze Carbon Footprint")
 
-if submit and uploaded_file:
-    with st.spinner("Analyzing receipt..."):
-        # Example extracted items (in production, use OCR or manual text input)
-        extracted_items = {
-            "Shirt": 2,
-            "Pants": 1,
-            "Shoes": 1,
-            "Food": 3
-        }
+if submit and st.session_state.image_data:
+    st.session_state.analysis_complete = False  # Reset state before analysis
+    st.session_state.carbon_score = None
+    st.session_state.offset_cost = None
+    st.session_state.error_message = None
 
-        # Generate estimate
-        total_emissions = estimate_carbon_footprint(extracted_items)
-        offset_cost = round(total_emissions * 0.10, 2)  # $0.10 per kg CO2 to offset
+    with st.spinner('Analyzing receipt...'):
+        input_prompt = (
+            "Analyze the uploaded receipt and extract items purchased along with their quantities. "
+            "Perform an in-depth analysis of the carbon footprint by considering product categories, materials, transportation, and manufacturing impact. "
+            "Provide a refined estimate in kilograms of CO2 for the entire purchase, ensuring the use of industry-standard emission values where available. "
+            "Calculate the estimated cost in USD to offset this carbon footprint using up-to-date carbon credit prices. "
+            "Ensure that the response contains: 'Total Carbon Emissions: X kg CO2' and 'Offset Cost: $X' as exact phrases for extraction. "
+            "If the image is not a receipt or is invalid, respond with an error message: 'Error: The uploaded image is not a valid receipt.'"
+        )
 
-        st.markdown("### 📊 Carbon Footprint Analysis")
-        st.markdown(f"**🌍 Total Carbon Emissions:** {round(total_emissions, 2)} kg CO2")
-        st.markdown(f"**💰 Offset Cost:** ${offset_cost}")
+        try:
+            response = get_gemini_response(model, input_prompt, st.session_state.image_data)
+
+            # Debug: Log the raw response
+            st.text("Debug: Raw Response from Model")
+            st.write(response)
+
+            # Improved extraction patterns
+            st.session_state.carbon_score = extract_numeric_value(response, r"Total Carbon Emissions:\s*([\d\.]+)")
+            st.session_state.offset_cost = extract_numeric_value(response, r"Offset Cost:\s*\$([\d\.]+)")
+
+            if st.session_state.carbon_score is not None and st.session_state.offset_cost is not None:
+                st.markdown("### 📊 Carbon Footprint Analysis")
+                st.markdown(f"**Total Carbon Emissions:** {st.session_state.carbon_score} kg CO2")
+                st.markdown(f"**Offset Cost:** ${st.session_state.offset_cost}")
+                st.session_state.analysis_complete = True
+            elif "Error:" in response:
+                st.session_state.error_message = response
+                st.error(st.session_state.error_message)
+            else:
+                st.error("Failed to extract values. Please check the receipt's clarity or try a different image.")
+        except Exception as e:
+            st.error(f"Error in processing the image: {str(e)}")
+elif submit:
+    st.warning("Please upload an image first! 📸")
