@@ -26,7 +26,7 @@ First, clone the github repository. Then, setup a (virtual) python environment. 
 
 ## Libraries to Download (Using Python3) 
 ```bash
-pip3 install streamlit flask werkzeug pandas mysql-connector-python
+pip install google-generativeai python-dotenv streamlit pillow matplotlib flask werkzeug
 ```
 
 ## Run the Streamlit App  
