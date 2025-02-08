@@ -110,7 +110,6 @@
             }
         ]
     },
-<<<<<<< HEAD
     "v": {
         "password": "6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b",
         "carbon_history": [
@@ -151,8 +150,16 @@
                 "offset_cost": 0.25
             }
         ]
+    },
+    "tsr": "043a718774c572bd8a25adbeb1bfcd5c0256ae11cecf9f9c3f925d0e52beaf89",
+    "nb": {
+        "password": "1b16b1df538ba12dc3f97edbb85caa7050d46c148134290feba80f8236c83db9",
+        "carbon_history": [
+            {
+                "timestamp": "2025-02-08 16:44:39",
+                "carbon_score": 16.5,
+                "offset_cost": 0.17
+            }
+        ]
     }
-=======
-    "bullshit": "30a989afc82c0a21139573591de4e5ff37994f7d1506a9acf2b5997005c2649f"
->>>>>>> 39fe83b58f57ec3ccfbf97aa3fa84b5562ea90e2
 }
