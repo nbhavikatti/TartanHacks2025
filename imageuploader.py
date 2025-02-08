@@ -7,8 +7,6 @@ import io
 import re
 import base64
 
-<<<<<<< HEAD
-=======
 # Load environment variables from .env file
 load_dotenv()
 
@@ -29,7 +27,6 @@ st.set_page_config(
 )
 
 # Load environment variables
->>>>>>> a2ef54f4f2bfeda4c81f763f2565cb4b4073f56f
 load_dotenv()
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
