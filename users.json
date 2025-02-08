@@ -1,5 +1,14 @@
 {
-    "carpetxie": "c22d655efee5277d67f61b69b9b714bd396825e51fe36e5b1e5bd38f75526288",
+    "carpetxie": {
+        "password": "c22d655efee5277d67f61b69b9b714bd396825e51fe36e5b1e5bd38f75526288",
+        "carbon_history": [
+            {
+                "timestamp": "2025-02-08 16:41:06",
+                "carbon_score": 11.0,
+                "offset_cost": 0.17
+            }
+        ]
+    },
     "c": {
         "password": "2d711642b726b04401627ca9fbac32f5c8530fb1903cc4db02258717921a4881",
         "carbon_history": [
@@ -150,5 +159,6 @@
                 "offset_cost": 0.25
             }
         ]
-    }
+    },
+    "abc": "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
 }
