@@ -1,4 +1,4 @@
-# EcoSpend! - AI-Powered Carbon Footprint Analyzer 🌿
+# EcoSpend! An AI-Powered Carbon Footprint Analyzer 🌿
 
 EcoSpend! is a fintech-inspired application created during TartanHacks2025 by two Dartmouth and two CMU students that empowers users to monitor and reduce their carbon footprint by analyzing purchase receipts. Utilizing AI-driven receipt parsing and SQL-based analytics, the platform provides real-time estimates of carbon emissions and calculates offset costs, promoting eco-conscious spending habits.
 
