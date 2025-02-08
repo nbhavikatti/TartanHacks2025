@@ -2,7 +2,7 @@ import google.generativeai as genai
 from dotenv import load_dotenv
 import streamlit as st
 import os
-from PIL import Image, ImageEnhance
+from PIL import Image
 import io
 import re
 import base64
@@ -21,7 +21,7 @@ st.set_page_config(
 load_dotenv()
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
-# ✅ Mock Carbon Data
+# ✅ Mock Carbon Data (initial reference)
 weekly_emissions = {
     "Monday": {"👕 Clothes": 5, "🚆 Transport": 15, "🥩 Food": 25},
     "Tuesday": {"👟 Clothes": 8, "🚗 Car": 20, "🍔 Fast Food": 15},
@@ -31,6 +31,7 @@ weekly_emissions = {
     "Saturday": {"✈️ Flights": 100, "🥗 Vegan": 5, "🎮 Gaming": 20},
     "Sunday": {"🚆 Transport": 25, "🚗 Car": 30, "🛒 Shopping": 12},
 }
+
 mock_transactions = [
     {"date": "2024-02-05", "item": "T-Shirt", "category": "👕 Clothes", "co2": 2.5, "offset_cost": 0.75},
     {"date": "2024-02-05", "item": "Train Ticket", "category": "🚆 Transport", "co2": 10.2, "offset_cost": 3.10},
@@ -62,6 +63,7 @@ def create_stacked_chart():
     chart_path = "stacked_chart.png"
     plt.tight_layout()
     plt.savefig(chart_path)
+    plt.close(fig)
     return chart_path
 
 # ✅ Display Dashboard
@@ -75,7 +77,7 @@ st.markdown(f"""
 
 # ✅ Display Stacked Bar Chart
 chart_path = create_stacked_chart()
-st.image(chart_path, caption="Weekly Carbon Footprint Breakdown", use_column_width=True)
+st.image(chart_path, caption="Weekly Carbon Footprint Breakdown", use_container_width=True)
 
 # ✅ Display Recent Transactions
 st.markdown("### 🛒 Recent Transactions")
@@ -96,12 +98,12 @@ uploaded_file = st.file_uploader("Upload a receipt image", type=["jpg", "jpeg", 
 if uploaded_file:
     display_image = Image.open(uploaded_file)
     if display_image:
-        st.image(display_image, caption="Uploaded Receipt", use_column_width=True)
+        st.image(display_image, caption="Uploaded Receipt", use_container_width=True)
         st.session_state.image_data = display_image
 
 submit = st.button("Analyze Carbon Footprint")
 
-if submit and st.session_state.image_data:
+if submit and st.session_state.get("image_data") is not None:
     st.session_state.analysis_complete = False
     st.session_state.carbon_score = None
     st.session_state.offset_cost = None
@@ -118,14 +120,17 @@ if submit and st.session_state.image_data:
         )
 
         try:
+            # Convert uploaded image to base64
             img_byte_arr = io.BytesIO()
             st.session_state.image_data.save(img_byte_arr, format='PNG')
             img_base64 = base64.b64encode(img_byte_arr.getvalue()).decode("utf-8")
 
+            # Call Generative AI model
             response = genai.GenerativeModel('gemini-1.5-flash').generate_content(
                 [input_prompt, {"mime_type": "image/png", "data": img_base64}]
             ).text
 
+            # Regex extraction
             st.session_state.carbon_score = float(re.search(r"Total Carbon Emissions:\s*([\d\.]+)", response).group(1))
             st.session_state.offset_cost = float(re.search(r"Offset Cost:\s*\$([\d\.]+)", response).group(1))
 
@@ -134,10 +139,56 @@ if submit and st.session_state.image_data:
                 st.markdown(f"**Total Carbon Emissions:** {st.session_state.carbon_score} kg CO2")
                 st.markdown(f"**Offset Cost:** ${st.session_state.offset_cost}")
                 st.session_state.analysis_complete = True
+
+                # ✅ Update users.json with new carbon score
+                username = st.session_state.get("username", None)
+                if username is None:
+                    st.warning("No user is currently logged in. Please log in to update carbon history.")
+                else:
+                    try:
+                        with open("users.json", "r") as f:
+                            users_data = json.load(f)
+
+                        # Ensure the user exists; if it's a string, convert it into a dict
+                        if username in users_data:
+                            if isinstance(users_data[username], str):
+                                # Convert string into a dict: password = the existing string, add carbon_history
+                                existing_password = users_data[username]
+                                users_data[username] = {
+                                    "password": existing_password,
+                                    "carbon_history": []
+                                }
+
+                            if isinstance(users_data[username], dict):
+                                carbon_history_entry = {
+                                    "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                                    "carbon_score": st.session_state.carbon_score,
+                                    "offset_cost": st.session_state.offset_cost
+                                }
+                                users_data[username].setdefault("carbon_history", []).append(carbon_history_entry)
+                                
+                                with open("users.json", "w") as f:
+                                    json.dump(users_data, f, indent=4)
+                            else:
+                                st.warning("Unable to update carbon history in users.json - invalid entry format.")
+                        else:
+                            st.warning("Unable to update carbon history in users.json - user not found.")
+
+                    except FileNotFoundError:
+                        st.error("users.json file not found. Cannot update carbon history.")
+
+                # ✅ Regenerate the stacked_chart.png to reflect the new data
+                # For demonstration, we'll just add the newly analyzed footprint to 'Sunday' as an extra category.
+                weekly_emissions["Sunday"]["📄 Receipt Upload"] = st.session_state.carbon_score
+                updated_chart_path = create_stacked_chart()
+                st.image(updated_chart_path, caption="Updated Weekly Carbon Footprint Breakdown", use_container_width=True)
+
             else:
                 st.error("Failed to extract values. Please check the receipt's clarity or try a different image.")
+
         except Exception as e:
             st.error(f"Error in processing the image: {str(e)}")
+
 elif submit:
     st.warning("Please upload an image first! 📸")
 
@@ -145,4 +196,4 @@ elif submit:
 if st.button("Logout"):
     st.session_state.authenticated = False
     st.session_state.username = None
-    st.switch_page("Login")
+    st.experimental_rerun()
