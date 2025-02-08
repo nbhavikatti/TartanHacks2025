@@ -105,7 +105,7 @@ def save_users(users):
 if "USER_DB" not in st.session_state:
     st.session_state.USER_DB = load_users()
 
-st.title("📝 Register for GreenTracker")
+st.title("📝 Register for EcoSpend!")
 
 username = st.text_input("Choose a Username")
 password = st.text_input("Choose a Password", type="password")
