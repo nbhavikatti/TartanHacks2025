@@ -232,9 +232,6 @@ if submit and st.session_state.image_data:
         try:
             response = get_gemini_response(model, input_prompt, st.session_state.image_data)
 
-            st.text("Debug: Raw Response from Model")
-            st.write(response)
-
             st.session_state.carbon_score = extract_numeric_value(response, r"Total Carbon Emissions:\s*([\d\.]+)")
             st.session_state.offset_cost = extract_numeric_value(response, r"Offset Cost:\s*\$([\d\.]+)")
 
