@@ -7,29 +7,6 @@ import io
 import re
 import base64
 
-<<<<<<< HEAD
-=======
-# Load environment variables from .env file
-load_dotenv()
-
-# Access the Google API key from the environment variables
-google_api_key = os.getenv("GOOGLE_API_KEY")
-
-# Ensure the API key is loaded correctly
-if google_api_key is None:
-    print("Error: GOOGLE_API_KEY not found in .env file")
-else:
-    print("Google API Key loaded successfully")
-
-# Set page configuration (must be the first Streamlit command)
-st.set_page_config(
-    page_title="Carbon Receipt Analyzer",
-    page_icon="🌱",
-    layout="centered"
-)
-
-# Load environment variables
->>>>>>> a2ef54f4f2bfeda4c81f763f2565cb4b4073f56f
 load_dotenv()
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
