@@ -6,6 +6,8 @@ from PIL import Image, ImageEnhance
 import io
 import re
 import base64
+import time
+from itertools import cycle
 
 # Load environment variables from .env file
 load_dotenv()
@@ -26,9 +28,7 @@ st.set_page_config(
     layout="centered"
 )
 
-# Load environment variables
-load_dotenv()
-genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+genai.configure(api_key=google_api_key)
 
 @st.cache_resource
 def initialize_model():
@@ -71,12 +71,6 @@ def extract_numeric_value(text, pattern):
         return float(match.group(1))
     return None
 
-st.set_page_config(
-    page_title="Carbon Receipt Analyzer",
-    page_icon="🌱",
-    layout="centered"
-)
-
 if 'image_data' not in st.session_state:
     st.session_state.image_data = None
 if 'analysis_complete' not in st.session_state:
@@ -115,7 +109,19 @@ if submit and st.session_state.image_data:
     st.session_state.offset_cost = None
     st.session_state.error_message = None
 
-    with st.spinner('Analyzing receipt...'):
+    with st.spinner("Analyzing receipt..."):
+        # Cycle through alternate messages
+        messages = cycle([
+            "Analyzing your receipt...",
+            "Calculating your Carbon Footprint...",
+            "Reducing Climate Change One Receipt at a Time...",
+            "Processing Environmental Impact Analysis..."
+        ])
+
+        for _ in range(4):  # Loop to display each message
+            st.info(next(messages))
+            time.sleep(1)
+
         input_prompt = (
             "Analyze the uploaded receipt and extract items purchased along with their quantities. "
             "Perform an in-depth analysis of the carbon footprint by considering product categories, materials, transportation, and manufacturing impact. "
@@ -128,11 +134,7 @@ if submit and st.session_state.image_data:
         try:
             response = get_gemini_response(model, input_prompt, st.session_state.image_data)
 
-            # Debug: Log the raw response
-            st.text("Debug: Raw Response from Model")
-            st.write(response)
-
-            # Improved extraction patterns
+            # Extract numeric values for carbon score and offset cost
             st.session_state.carbon_score = extract_numeric_value(response, r"Total Carbon Emissions:\s*([\d\.]+)")
             st.session_state.offset_cost = extract_numeric_value(response, r"Offset Cost:\s*\$([\d\.]+)")
 
